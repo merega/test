@@ -1,0 +1,37 @@
+stages: [build, deploy]
+
+variables:
+  IMAGE_NAME: $REGISTRY   # registry.gitlab.com/group/repo/nest-redis
+  K8S_NAMESPACE: dev-nest
+
+build:
+  stage: build
+  image: docker:27
+  services: [docker:27-dind]
+  script:
+    - docker login -u "$REGISTRY_USERNAME" -p "$REGISTRY_PASSWORD" "$REGISTRY_HOST"
+    - TAG="${CI_COMMIT_REF_NAME}-${CI_COMMIT_SHORT_SHA}"
+    - docker build -t "$IMAGE_NAME:$TAG" -t "$IMAGE_NAME:latest" .
+    - docker push "$IMAGE_NAME:$TAG"
+    - if [ "$CI_COMMIT_REF_NAME" = "main" ] || [ "$CI_COMMIT_REF_NAME" = "master" ]; then docker push "$IMAGE_NAME:latest"; fi
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+
+deploy:
+  stage: deploy
+  image: bitnami/kubectl:1.30
+  needs: ["build"]
+  script:
+    - mkdir -p ~/.kube
+    - echo "$KUBE_CONFIG" | base64 -d > ~/.kube/config
+    - kubectl config set-context --current --namespace="$K8S_NAMESPACE"
+    - TAG="${CI_COMMIT_REF_NAME}-${CI_COMMIT_SHORT_SHA}"
+    - sed -i "s|REPLACE_WITH_REGISTRY_IMAGE|$IMAGE_NAME:$TAG|g" k8s/04-app.yaml
+    - kubectl apply -f k8s/00-namespace.yaml || true
+    - kubectl apply -f k8s/01-configmap.yaml
+    - kubectl apply -f k8s/03-redis.yaml
+    - kubectl apply -f k8s/04-app.yaml
+    - kubectl apply -f k8s/05-hpa.yaml
+    - kubectl apply -f k8s/06-networkpolicy.yaml
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master" || $CI_COMMIT_BRANCH == "dev"'

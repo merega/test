@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: dev-nest
+data:
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+  # REDIS_PASSWORD from Secret
