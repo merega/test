@@ -17,6 +17,8 @@ spec:
         app.kubernetes.io/name: redis
         app.kubernetes.io/part-of: devops-test
     spec:
+      securityContext:
+        runAsNonRoot: false   # Redis требует root внутри контейнера
       containers:
         - name: redis
           image: redis:7
@@ -24,7 +26,7 @@ spec:
           ports:
             - name: redis
               containerPort: 6379
-          # <-- Включаем пароль из Secret
+          # включаем пароль через requirepass
           args: ["redis-server", "--appendonly", "yes", "--requirepass", "$(REDIS_PASSWORD)"]
           env:
             - name: REDIS_PASSWORD
@@ -33,11 +35,13 @@ spec:
                   name: redis-secret
                   key: REDIS_PASSWORD
           livenessProbe:
-            tcpSocket: { port: 6379 }
+            tcpSocket:
+              port: 6379
             initialDelaySeconds: 10
             periodSeconds: 10
           readinessProbe:
-            tcpSocket: { port: 6379 }
+            tcpSocket:
+              port: 6379
             initialDelaySeconds: 5
             periodSeconds: 5
           resources:

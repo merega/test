@@ -6,7 +6,7 @@ on:
   pull_request:
 
 env:
-  IMAGE_NAME: ${{ secrets.REGISTRY }}   # ghcr.io/ORG/REPO или docker.io/USER/IMAGE
+  IMAGE_NAME: ${{ secrets.REGISTRY }}   # ghcr.io/merega/devops-test
   K8S_NAMESPACE: dev-nest
 
 jobs:
@@ -26,7 +26,7 @@ jobs:
         with:
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
-          registry: ${{ secrets.REGISTRY_HOST || 'ghcr.io' }}
+          registry: ghcr.io
 
       - name: Extract metadata (tags, labels)
         id: meta
@@ -50,36 +50,39 @@ jobs:
 
       - name: Save image tag
         id: img
-        run: echo "IMAGE_TAG=${{ steps.meta.outputs.version }}" >> $GITHUB_OUTPUT
-
-  deploy:
-    needs: build-and-push
-    if: github.ref_name == 'main' || github.ref_name == 'master' || github.ref_name == 'dev'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup kubectl
-        uses: azure/setup-kubectl@v4
-        with:
-          version: 'v1.30.0'
-
-      - name: Write kubeconfig
         run: |
-          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > $HOME/.kube/config
-          kubectl config set-context --current --namespace=${{ env.K8S_NAMESPACE }}
+          echo "IMAGE_TAG=${{ steps.meta.outputs.tags }}" >> $GITHUB_OUTPUT
+          echo "Built and pushed image: ${{ steps.meta.outputs.tags }}"
 
-      - name: Set image in manifest and deploy
-        run: |
-          IMG="${{ env.IMAGE_NAME }}:${{ needs.build-and-push.outputs.img.IMAGE_TAG || 'latest' }}"
-          sed -i "s|REPLACE_WITH_REGISTRY_IMAGE|${IMG}|g" k8s/04-app.yaml
-          kubectl apply -f k8s/00-namespace.yaml || true
-          kubectl apply -f k8s/01-configmap.yaml
-          kubectl apply -f k8s/03-redis.yaml
-          kubectl apply -f k8s/04-app.yaml
-          kubectl apply -f k8s/05-hpa.yaml
-          kubectl apply -f k8s/06-networkpolicy.yaml
-          # kubectl apply -f k8s/07-servicemonitor.optional.yaml   # если используете Operator
-
-      - name: Verify rollout
-        run: kubectl rollout status deploy/nestjs-app --timeout=120s
+#  deploy:
+#    if: false
+#    needs: build-and-push
+#    if: github.ref_name == 'main' || github.ref_name == 'master' || github.ref_name == 'dev'
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v4
+#
+#      - name: Setup kubectl
+#        uses: azure/setup-kubectl@v4
+#        with:
+#          version: 'v1.30.0'
+#
+#      - name: Write kubeconfig
+#        run: |
+#          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > $HOME/.kube/config
+#          kubectl config set-context --current --namespace=${{ env.K8S_NAMESPACE }}
+#
+#      - name: Set image in manifest and deploy
+#        run: |
+#          IMG="${{ env.IMAGE_NAME }}:${{ needs.build-and-push.outputs.img.IMAGE_TAG || 'latest' }}"
+#          sed -i "s|REPLACE_WITH_REGISTRY_IMAGE|${IMG}|g" k8s/04-app.yaml
+#          kubectl apply -f k8s/00-namespace.yaml || true
+#          kubectl apply -f k8s/01-configmap.yaml
+#          kubectl apply -f k8s/03-redis.yaml
+#          kubectl apply -f k8s/04-app.yaml
+#          kubectl apply -f k8s/05-hpa.yaml
+#          kubectl apply -f k8s/06-networkpolicy.yaml
+#          # kubectl apply -f k8s/07-servicemonitor.optional.yaml   # если используете Operator
+#
+#      - name: Verify rollout
+#        run: kubectl rollout status deploy/nestjs-app --timeout=120s
