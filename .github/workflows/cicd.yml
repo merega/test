@@ -9,6 +9,17 @@ env:
   IMAGE_NAME: ${{ secrets.REGISTRY }}   # ghcr.io/merega/devops-test
   K8S_NAMESPACE: dev-nest
 
+name: CI/CD
+
+on:
+  push:
+    branches: [ "main", "master", "dev" ]
+  pull_request:
+
+env:
+  IMAGE_NAME: ${{ secrets.REGISTRY }}   # ghcr.io/merega/devops-test
+  K8S_NAMESPACE: dev-nest
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
@@ -35,7 +46,7 @@ jobs:
           images: ${{ env.IMAGE_NAME }}
 
       - name: Shorten SHA
-        run: echo "SHORT_SHA=${GITHUB_SHA::8}" >> $GITHUB_ENV
+        run: echo "SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-8)" >> $GITHUB_ENV
 
       - name: Build and push
         uses: docker/build-push-action@v6
