@@ -60,4 +60,11 @@ kubectl -n dev-nest apply -f k8s/06-networkpolicy.yaml
 Проверяем сервис:
 ```curl http://nest-redis.local/redis```
 
+Для пуша образа нужно добавить секреты в github Repository secrets:
+
+REGISTRY
+REGISTRY_PASSWORD
+REGISTRY_USERNAME
+
+
 
