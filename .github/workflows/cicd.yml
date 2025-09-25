@@ -28,14 +28,14 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
           registry: ghcr.io
 
-      - name: Extract metadata (tags, labels)
+      - name: Extract metadata (labels only)
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.IMAGE_NAME }}
-          tags: |
-            type=raw,value=${{ github.ref_name }}-${{ github.sha::8 }}
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/heads/main') || startsWith(github.ref, 'refs/heads/master') }}
+
+      - name: Shorten SHA
+        run: echo "SHORT_SHA=${GITHUB_SHA::8}" >> $GITHUB_ENV
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -43,16 +43,15 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ github.ref_name }}-${{ env.SHORT_SHA }}
+            ${{ env.IMAGE_NAME }}:latest
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Save image tag
-        id: img
-        run: |
-          echo "IMAGE_TAG=${{ steps.meta.outputs.tags }}" >> $GITHUB_OUTPUT
-          echo "Built and pushed image: ${{ steps.meta.outputs.tags }}"
+      - name: Show image info
+        run: echo "Built and pushed image: ${{ env.IMAGE_NAME }}:${{ github.ref_name }}-${{ env.SHORT_SHA }}"
 
 #  deploy:
 #    if: false
