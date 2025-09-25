@@ -7,18 +7,6 @@ on:
 
 env:
   IMAGE_NAME: ${{ secrets.REGISTRY }}   # ghcr.io/merega/devops-test
-  K8S_NAMESPACE: dev-nest
-
-name: CI/CD
-
-on:
-  push:
-    branches: [ "main", "master", "dev" ]
-  pull_request:
-
-env:
-  IMAGE_NAME: ${{ secrets.REGISTRY }}   # ghcr.io/merega/devops-test
-  K8S_NAMESPACE: dev-nest
 
 jobs:
   build-and-push:
@@ -39,12 +27,6 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
           registry: ghcr.io
 
-      - name: Extract metadata (labels only)
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.IMAGE_NAME }}
-
       - name: Shorten SHA
         run: echo "SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-8)" >> $GITHUB_ENV
 
@@ -57,12 +39,6 @@ jobs:
           tags: |
             ${{ env.IMAGE_NAME }}:${{ github.ref_name }}-${{ env.SHORT_SHA }}
             ${{ env.IMAGE_NAME }}:latest
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Show image info
-        run: echo "Built and pushed image: ${{ env.IMAGE_NAME }}:${{ github.ref_name }}-${{ env.SHORT_SHA }}"
 
 #  deploy:
 #    if: false
